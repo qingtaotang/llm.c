@@ -535,21 +535,21 @@ typedef struct {
 // the parameters of the model
 #define NUM_PARAMETER_TENSORS 16
 typedef struct {
-    float* wte; // (V, C)
-    float* wpe; // (maxT, C)
-    float* ln1w; // (L, C)
+    float* wte; // (V, C)，Weight Token Embedding
+    float* wpe; // (maxT, C)，Weight Positional Embedding
+    float* ln1w; // (L, C)，注意力块之前的归一化参数
     float* ln1b; // (L, C)
     float* qkvw; // (L, 3*C, C)
     float* qkvb; // (L, 3*C)
-    float* attprojw; // (L, C, C)
+    float* attprojw; // (L, C, C)，o，在多头注意力计算完成后，需要将结果映射回原来的维度 $C$。这是注意力块的最后一次线性变换。
     float* attprojb; // (L, C)
-    float* ln2w; // (L, C)
+    float* ln2w; // (L, C)，MLP块之前的归一化参数
     float* ln2b; // (L, C)
     float* fcw; // (L, 4*C, C)
     float* fcb; // (L, 4*C)
     float* fcprojw; // (L, C, 4*C)
     float* fcprojb; // (L, C)
-    float* lnfw; // (C)
+    float* lnfw; // (C)，最后的归一化层参数
     float* lnfb; // (C)
 } ParameterTensors;
 
@@ -600,20 +600,20 @@ float* malloc_and_point_parameters(ParameterTensors* params, size_t* param_sizes
 
 #define NUM_ACTIVATION_TENSORS 23
 typedef struct {
-    float* encoded; // (B, T, C)
-    float* ln1; // (L, B, T, C)
-    float* ln1_mean; // (L, B, T)
-    float* ln1_rstd; // (L, B, T)
-    float* qkv; // (L, B, T, 3*C)
-    float* atty; // (L, B, T, C)
-    float* preatt; // (L, B, NH, T, T)
-    float* att; // (L, B, NH, T, T)
-    float* attproj; // (L, B, T, C)
-    float* residual2; // (L, B, T, C)
-    float* ln2; // (L, B, T, C)
-    float* ln2_mean; // (L, B, T)
+    float* encoded; // (B, T, C)，输入文本经过token和位置嵌入后的表示，作为Transformer层的输入
+    float* ln1; // (L, B, T, C)，注意力块之前的归一化输出。每层都有一个这样的张量，存储在一起以便于访问和管理
+    float* ln1_mean; // (L, B, T)，注意力块之前的归一化的均值，供反向传播使用
+    float* ln1_rstd; // (L, B, T)，注意力块之前的归一化的rstd（标准差的倒数），供反向传播使用
+    float* qkv; // (L, B, T, 3*C)，每层的注意力块中，输入经过线性变换得到的查询、键、值向量的拼接结果
+    float* atty; // (L, B, T, C)，注意力机制的最终输出（$Value$ 向量加权后的结果）。
+    float* preatt; // (L, B, NH, T, T)，注意力得分（Attention Scores），即 $QK^T$ 的原始结果，尚未经过 Softmax，和NH成正比
+    float* att; // (L, B, NH, T, T)，经过 Softmax 后的概率矩阵，形状为 $(T, T)$ 代表序列中每个词对其他词的关注度。
+    float* attproj; // (L, B, T, C)，经过Out Projection线性变换后的注意力输出，准备与残差连接相加。
+    float* residual2; // (L, B, T, C)，注意力块的残差连接输出，即注意力输出与输入（经过残差连接）相加的结果，作为MLP块的输入
+    float* ln2; // (L, B, T, C) MLP块之前的归一化输出。每层都有一个这样的张量，存储在一起以便于访问和管理
+    float* ln2_mean; // (L, B, T) MLP块之前的归一化的均值，供反向传播使用
     float* ln2_rstd; // (L, B, T)
-    float* fch; // (L, B, T, 4*C)
+    float* fch; // (L, B, T, 4*C) MLP块中，经过第一层线性变换后的输出，准备输入到GeLU非线性函数中
     float* fch_gelu; // (L, B, T, 4*C)
     float* fcproj; // (L, B, T, C)
     float* residual3; // (L, B, T, C)

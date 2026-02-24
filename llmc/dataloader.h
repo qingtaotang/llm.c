@@ -187,8 +187,8 @@ void dataloader_init(DataLoader *loader,
         ntok_total += shard_ntok;
     }
     // debugging prints
-    // printf("DataLoader: filename_pattern: %s\n", filename_pattern);
-    // printf("DataLoader: Found %ld tokens across %zu shards\n", ntok_total, loader->glob_result.gl_pathc);
+    printf("DataLoader: filename_pattern: %s\n", filename_pattern);
+    printf("DataLoader: Found %ld tokens across %zu shards\n", ntok_total, loader->glob_result.gl_pathc);
 
     // allocate all the space we'll need
     loader->buffer = (uint16_t*)mallocCheck((B * T + 1) * sizeof(uint16_t));
@@ -222,7 +222,7 @@ void dataloader_load_batch(DataLoader* loader) {
 void dataloader_next_batch(DataLoader *loader) {
     // if the next batch would go past the end of the file, advance the loader
     if (loader->current_sample_idx >= loader->shard_num_samples) {
-        dataloader_advance_(loader);
+        dataloader_advance_(loader); // shard and position are updated inside this function, and the new shard is loaded
     }
     dataloader_load_batch(loader);
     loader->current_sample_idx += 1;

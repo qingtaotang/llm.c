@@ -26,7 +26,7 @@ FILES=(
     "hellaswag_val.bin"
 )
 
-# Function to download files to the appropriate directory
+# Function to download files to the appropriate directory with retry and resume
 download_file() {
     local FILE_NAME=$1
     local FILE_URL="${BASE_URL}${FILE_NAME}?download=true"
@@ -41,12 +41,36 @@ download_file() {
         FILE_PATH="${SAVE_DIR_PARENT}/${FILE_NAME}"
     fi
 
-    # Download the file
-    curl -s -L -o "$FILE_PATH" "$FILE_URL"
-    echo "Downloaded $FILE_NAME to $FILE_PATH"
+    local MAX_RETRIES=5
+    local ATTEMPT=0
+    local SUCCESS=0
+
+    echo "Starting download: $FILE_NAME"
+
+    while [ $ATTEMPT -lt $MAX_RETRIES ]; do
+        # -L: follow redirects
+        # -C -: resume broken downloads
+        # --fail: fail silently on server errors (don't save HTML error pages)
+        # -# : show simple progress bar
+        if curl -L -C - --fail -# -o "$FILE_PATH" "$FILE_URL"; then
+            SUCCESS=1
+            break
+        else
+            ATTEMPT=$((ATTEMPT+1))
+            echo "Warning: Download interrupted for $FILE_NAME. Retrying ($ATTEMPT/$MAX_RETRIES) in 3 seconds..."
+            sleep 3
+        fi
+    done
+
+    if [ $SUCCESS -eq 0 ]; then
+        echo "Error: Failed to download $FILE_NAME completely after $MAX_RETRIES attempts."
+    else
+        echo "Successfully verified/downloaded: $FILE_NAME"
+    fi
 }
 
-# Export the function so it's available in subshells
+# Export the function and variables so they are available in subshells
+export BASE_URL SAVE_DIR_TINY SAVE_DIR_HELLA SAVE_DIR_PARENT
 export -f download_file
 
 # Generate download commands
@@ -55,7 +79,7 @@ for FILE in "${FILES[@]}"; do
     download_commands+=("download_file \"$FILE\"")
 done
 
-# Function to manage parallel jobs in increments of a given size
+# Function to manage parallel jobs
 run_in_parallel() {
     local batch_size=$1
     shift
@@ -70,11 +94,10 @@ run_in_parallel() {
         fi
     done
 
-    # Wait for any remaining jobs to finish
     wait
 }
 
-# Run the download commands in parallel in batches of 2
-run_in_parallel 6 "${download_commands[@]}"
+# Reduced batch size from 6 to 3 to prevent HuggingFace connection drops
+run_in_parallel 1 "${download_commands[@]}"
 
-echo "All files downloaded and saved in their respective directories"
+echo "All download processes finished. Please check above for any persistent errors."
