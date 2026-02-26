@@ -1094,6 +1094,8 @@ int main() {
     dataloader_init(&val_loader, val_tokens, B, T, 0, 1, 0);
     printf("train dataset num_batches: %zu\n", train_loader.num_tokens / (B*T));
     printf("val dataset num_batches: %zu\n", val_loader.num_tokens / (B*T));
+    printf("training batch size: %d\n", B);
+    printf("training sequence length: %d\n", T);
     int val_num_batches = 5;
 
     // build the Tokenizer
